@@ -1,0 +1,149 @@
+/* general */
+
+@import url('https://fonts.googleapis.com/css?family=IBM+Plex+Mono:400,400i');
+
+body, textarea, input, button {
+	font-family: 'IBM Plex Mono', monospace;
+	/* font-size: 14pt; */
+	color: #21823B;
+}
+
+body {
+    background-color: #1c1c1c;
+}
+
+a {
+    color: #21823B;
+}
+
+li.story div.details span.link a:visited {
+	color: #2BB04E;
+}
+
+
+/* forms */
+
+input,
+button,
+select,
+textarea {
+	color: #21823B;
+	background-color: #111111;
+	padding: 3px 5px;
+}
+input[type="text"],
+input[type="search"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+textarea {
+	border: 1px solid #ccc;
+}
+select {
+	border: 1px solid #ccc;
+}
+input:focus,
+textarea:focus {
+	border-color: #888;
+	color: #21823B;
+	outline: 0;
+}
+textarea:disabled {
+	background-color: #000;
+}
+
+
+input[type="submit"]:focus,
+button:focus {
+	border-color: #888;
+	outline: 1px solid #888;
+}
+
+button,
+input[type="button"],
+input[type="reset"],
+input[type="submit"],
+div.select2-choices,
+a.button {
+	background-color: #111111;
+	color: #21823B;
+}
+button:hover,
+input[type="button"]:hover,
+input[type="reset"]:hover,
+input[type="submit"]:hover {
+	color: #21823B;
+	background-color: #111111;
+}
+
+select:focus {
+	color: #21823B;
+}
+
+input:disabled,
+button:disabled {
+	background-color: #222222;
+	color: #1C532A;
+}
+
+/* select2 deuglification */
+
+.select2-container-multi.select2-container-active .select2-choices {
+	border: 1px solid rgba(160,160,160,.8);
+}
+.select2-container .select2-results .select2-highlighted {
+	background: red;
+	color: #fff;
+}
+
+.select2-container-multi .select2-choices {
+	border-color: #ccc;
+}
+
+.select2-dropdown-open .select2-choice {
+	border: 1px solid #aaa;
+}
+
+.select2-container .select2-results li em {
+	color: #aaa;
+}
+
+.select2-container,
+.select2-container-multi,
+.select2-choices,
+.select2-search-field,
+.select2-container-multi .select2-choices {
+    background-color: #111111;
+}
+
+/* data tables */
+
+table.data th {
+	background-color: #111111;
+}
+
+table.data.zebra tr:nth-child(even) td {
+	background-color: #222222;
+}
+table.data.zebra tr:nth-child(odd) td {
+	background-color: #292929;
+}
+
+#header a.cur_url {
+	color: #999;
+}
+
+a.tag {
+	background-color: #666;
+	border: 1px solid #d5d458;
+	color: #000;
+}
+
+span.hat span.crown {
+    color: #000;
+}
+
+table,
+div.markdown_help {
+    background-color: #333;
+}
