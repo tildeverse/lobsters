@@ -1,5 +1,5 @@
 class TagsController < ApplicationController
-  before_action :require_logged_in_admin, except: [:index]
+  before_action :require_logged_in_user, except: [:index]
 
   def index
     @cur_url = "/tags"

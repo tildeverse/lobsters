@@ -1,6 +1,6 @@
 class << Rails.application
   def domain
-    "links.tildeverse.org"
+    "tilde.news"
   end
 
   def name
