@@ -12,7 +12,7 @@
 	div#leader {
 		margin: 0;
 		padding: 8px 5px;
-		background-color: #eee;
+		background-color: #1c1c1c;
 		border-bottom: 1px solid #ccc;
 	}
 	div#leader {
@@ -129,14 +129,14 @@
 		display: table;
 	}
 	ol.stories.list li.story div.story_liner {
-		background-color: #fbfbfb;
+		background-color: #1c1c1c;
 		display: table-cell;
 		padding-top: 0.5em;
 		padding-bottom: 0.75em;
 		width: 100%;
 	}
 	ol.stories.list li.story .mobile_comments {
-		background-color: #e8e8e8;
+		background-color: #1c1c1c;
 		display: table-cell !important;
 		font-size: 11pt;
 		min-width: 40px;
