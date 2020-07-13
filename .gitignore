@@ -33,3 +33,4 @@ config/initializers/secret_token.rb
 config/*.sphinx.conf
 config/unicorn.conf.rb
 config/scout_apm.yml
+.env
