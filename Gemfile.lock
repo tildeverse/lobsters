@@ -252,7 +252,7 @@ GEM
       sprockets (>= 2.8, < 4.0)
     stackprof (0.2.15)
     svg-graph (2.2.0)
-    thor (1.0.1)
+    thor (0.20.3)
     thread_safe (0.3.6)
     transaction_isolation (1.0.5)
       activerecord (>= 3.0.11)
