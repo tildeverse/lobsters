@@ -1287,3 +1287,25 @@ div.flash-success h2 {
 	text-decoration: none;
 	vertical-align: middle;
 }
+
+/* prefers-color-scheme: light */
+@media (prefers-color-scheme: light) {
+	html,
+	body,
+	textarea,
+	button,
+	input,
+	input[type="submit"],
+	.select2-container,
+	.select2-container-multi,
+	.select2-choices,
+	.select2-search-field,
+	.select2-container-multi .select2-choices
+	{
+		background: #ffffee;
+	}
+
+	a.tag {
+		background: #d0d0d0;
+	}
+}
