@@ -152,3 +152,41 @@ table,
 div.markdown_help {
     background-color: #333;
 }
+
+/* prefers-color-scheme: light */
+@media (prefers-color-scheme: light) {
+    html,
+    body,
+    textarea,
+    button,
+    input,
+    input[type="submit"],
+    .select2-container,
+    .select2-container-multi,
+    .select2-choices,
+    .select2-search-field,
+    .select2-container-multi .select2-choices {
+        background: #ffffee;
+        color: black;
+    }
+
+    li.story div.details span.link a:link,
+    a:link {
+        color: blue;
+    }
+
+    li.story div.details span.link a:visited,
+    a:visited {
+        color: purple;
+    }
+
+    a.tag {
+        background: white;
+        border-color: #eee;
+    }
+
+    div#header,
+    div#footer {
+        font-weight: normal;
+    }
+}
