@@ -1305,7 +1305,27 @@ div.flash-success h2 {
 		background: #ffffee;
 	}
 
+	body {
+		background: revert !important;
+	}
+
+	li .byline a {
+		color: revert !important;
+	}
+
+	.headerlinks a,
+	#footer a {
+		color: #333 !important;
+	}
+
 	a.tag {
-		background: #d0d0d0;
+		background: #d0d0d0 !important;
+	}
+
+	li .domain,
+	div.voters div.score,
+	ol.stories.list div.story_content,
+	div.voters .upvoter, div.voters .flagger {
+		color: #555 !important;
 	}
 }
