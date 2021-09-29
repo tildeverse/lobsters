@@ -1,0 +1,69 @@
+/* light mode */
+:root {
+	--color-lobsters-fg-has-suggestions: #bd6060;
+
+	--color-lobsters-tag-special-bg: #f9ddde;
+	--color-lobsters-tag-special-border: #f0b2b8;
+
+	--color-lobsters-hat-sysop-crown-fill: #ddc7c7;
+	--color-lobsters-hat-sysop-brim-stroke: #bbb2b2;
+}
+
+/* dark mode */
+@media (prefers-color-scheme: dark) {
+	:root {
+		--color-lobsters-fg-has-suggestions: #df7171;
+
+		--color-lobsters-tag-special-bg: #3b1719;
+		--color-lobsters-tag-special-border: #611a21;
+
+		--color-lobsters-hat-sysop-crown-fill: #3e2f2f;
+		--color-lobsters-hat-sysop-brim-stroke: #2c2222;
+	}
+}
+
+li .byline a.story_has_suggestions {
+	color: var(--color-lobsters-fg-has-suggestions);
+}
+
+a.tag_announce, a.tag_ask, a.tag_show, a.tag_interview {
+	background-color: var(--color-lobsters-tag-special-bg);
+	border-color: var(--color-lobsters-tag-special-border);
+	color: var(--color-fg-67);
+}
+
+span.hat_openbsd_developer span.crown {
+	font-family: comic sans ms, comic sans, comic neue, sans-serif;
+	font-size: 7pt;
+}
+
+span.hat_sysop {
+	border-color: var(--color-lobsters-hat-sysop-brim-stroke);
+	color: var(--color-fg-67);
+}
+span.hat_sysop span.crown {
+	background-color: var(--color-lobsters-hat-sysop-crown-fill);
+}
+
+#l_holder {
+	position: relative;
+}
+#l_holder:after {
+	content: '';
+	background: transparent url("/favicon-16x16.png") no-repeat center;
+	position: absolute;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	right: 0;
+}
+
+@media
+only screen and (min-resolution: 2dppx),
+only screen and (-webkit-min-device-pixel-ratio: 2) {
+	#l_holder {
+		background: transparent url("/favicon-16x16.png") no-repeat;
+		background-size: 16px;
+		background-position: 1px 1px;
+	}
+}
