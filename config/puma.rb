@@ -33,7 +33,7 @@ workers ENV.fetch("WEB_CONCURRENCY") { 12 }
 # process behavior so workers use less memory.
 #
 if ENV.fetch("RAILS_ENV") == "production"
-  bind 'unix:///srv/lobste.rs/http/tmp/puma.sock'
+  bind 'unix:///srv/lobsters/lobsters/http/tmp/puma.sock'
   preload_app!
 end
 

@@ -32,16 +32,11 @@ public/.well-known
 public/avatars
 public/sitemap*
 
-# templates to be created per-site
-app/views/about/404.*
-app/views/about/about.*
-app/views/about/chat.*
-app/views/about/privacy.*
-public/apple-touch-icon*
-public/favicon.ico
-
 # prod config
 config/credentials.yml.enc
+
+# files added in production
+lib/tasks/deploy.rake
 config/database.yml
 config/initializers/development.rb
 config/initializers/production.rb
@@ -49,4 +44,5 @@ config/master.key
 config/scout_apm.yml
 config/*.sphinx.conf
 config/unicorn.conf.rb
-lib/tasks/deploy.rake
+config/scout_apm.yml
+.env

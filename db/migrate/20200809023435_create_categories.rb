@@ -7,7 +7,7 @@ class CreateCategories < ActiveRecord::Migration[5.2]
   end
 
   def change
-    raise "You need to edit this migration to define categories matching your site" unless Rails.application.name == 'Lobsters'
+    #raise "You need to edit this migration to define categories matching your site" unless Rails.application.name == 'Lobsters'
 
     create_table :categories do |t|
       t.string :category
@@ -19,18 +19,22 @@ class CreateCategories < ActiveRecord::Migration[5.2]
     # list your tags in console with: Tag.all.pluck(:tag).join(' ')
 
     {
-      compsci: %w{ai compsci distributed formalmethods graphics osdev plt programming networking},
-      culture: %w{culture person philosophy law},
-      field: %w{cogsci crypto education finance hardware math science},
-      format: %w{ask audio pdf show slides transcript video},
-      genre: %w{art book event historical job news rant release satire},
-      interaction: %w{a11y design visualization},
-      languages: %w{apl assembly c c++ clojure css d dotnet elixir elm erlang fortran go haskell java javascript lisp lua ml nodejs objectivec perl php python ruby rust scala swift},
-      lobsters: %w{announce interview meta},
-      os: %w{android dragonflybsd freebsd illumos ios linux mac netbsd openbsd unix windows},
-      platforms: %w{browsers cryptocurrencies email games ipv6 mobile wasm web},
-      practices: %w{api debugging devops performance practices privacy reversing scaling security testing virtualization},
-      tools: %w{compilers databases emacs systemd vcs vim},
+      misc: ["test"],
+      capitalism: ["business", "capitalism", "censorship", "cloud-computing", "blockchain", "cryptocurrency", "5G", "adblock", "artificial-intelligence", "data-analysis", "data-brokers", "data-exploration", "data-science", "data-visualization", "extreme-capitalism", "finding-cures", "government", "health-insurance", "information-abundance", "intelligent-cloud", "intelligent-edge", "IoT", "machine-learning", "microsoft", "oracle", "propaganda", "SaaS", "social-data", "social-media", "surveillance", "surveillance-capitalism", "twitch", "U.S.A", "USA", "youtube"],
+      social: ["IRC", "matrix", "fediverse", "email"],
+      software: ["projects", "command line", "algorithms", "automation", "FOSS", "GNU", "gnu+linux", "agile",  "programming", "open-source", "UNIX", "theory", "design", "kernel", "init", "software-development"],
+      hardware: ["Hardware", "desktop-computing", "Raspberry-Pi"],
+      os: ["BSD", "Linux", "macos", "windows", "distros"],
+      languages: ["bash", "css", "javascript", "lisp", "rust", "python"],
+      learn: ["ecology", "education", "EFF", "guide", "History", "Hackers", "hackerspace", "learning", "makerspace", "projects", "physics", "science", "space", "leadership"],
+      tools: ["emacs", "git", "shell", "systemd", "terminal", "ssh", "vim", "dns", "scripting"],
+      privacy: ["anonymity", "Privacy"],
+      security: ["cryptography", "cybersecurity", "security"],
+      tildes: ["yourtilde", "~team", "~town", "envs", "tildes", "tildeverse", "thunix", "system administration"],
+      culture: ["coffee", "content_warning", "current-events", "Art", "astronomy", "broadcasting", "equality", "fun", "gaming", "general", "health", "meme", "repair", "tips-n-tricks", "today-i-learned", "trivia", "yikes", "random", "MUSH", "satire", "sports"],
+      people: ["dennis-ritchie", "ken-thompson", "Luke Smith", "paul-ford", "richard-stallman"],
+      smallinternet: ["decentralized-internet", "gopher", "gemini", "internet-freedom", "lowtech", "self-hosting", "slow", "small internet", "SpartanWeb", "non-commerical-internet", "protocols", "text", "KISS", "design"],
+      web: ["digitalization", "internet", "modern-web", "mozilla", "Podcasts", "radio", "media", "multiplayer", "Reddit", "search engines", "Video", "web", "web-browsers", "web-development"],
     }.each do |category, tags|
       c = Category.create! category: category
       Tag.where(tag: tags).update_all(category_id: c.id)
