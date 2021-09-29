@@ -21,7 +21,7 @@ environment ENV.fetch("RAILS_ENV") { "development" }
 # Specifies the `pidfile` that Puma will use.
 pidfile ENV.fetch("PIDFILE") {
   if ENV.fetch("RAILS_ENV") == "production"
-    "/srv/lobste.rs/run/puma.pid"
+    "/srv/lobsters/lobsters/puma.pid"
   else
     "tmp/puma.pid"
   end
@@ -81,7 +81,7 @@ end
 # before forking the application. This takes advantage of Copy On Write
 # process behavior so workers use less memory.
 if ENV.fetch("RAILS_ENV") == "production"
-  bind "unix:///srv/lobste.rs/run/puma.sock"
+  bind "unix:///srv/lobsters/lobsters/run/puma.sock"
 
   # phased restarts
   # https://github.com/puma/puma/blob/master/docs/restart.md

@@ -7,6 +7,7 @@ gem "trilogy"
 # rails
 gem "scenic"
 gem "scenic-mysql_adapter"
+gem "mysql2"
 gem "activerecord-typedstore"
 gem "sprockets-rails", require: "sprockets/railtie"
 

@@ -1,4 +1,4 @@
 #!/bin/sh
 
-find /srv/lobste.rs/http/tmp/cache/ -type f -not -mmin 2 -delete
-find /srv/lobste.rs/http/public/cache/ -type f -not -mmin 2 -delete
+find /srv/lobsters/lobsters/tmp/cache/ -type f -not -mmin 2 -delete
+find /srv/lobsters/lobsters/public/cache/ -type f -not -mmin 2 -delete

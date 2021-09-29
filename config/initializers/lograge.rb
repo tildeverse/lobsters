@@ -8,7 +8,7 @@ Rails.application.configure do
 
   # Use a custom logger to silence the Rails default metadata like:
   # I, [2024-07-30T04:15:03.397498 #582493]  INFO -- : [35da4f44-e8a4-49ec-bc6e-ee2e9f8d43b4]
-  config.logger = ActiveSupport::Logger.new(Rails.env.production? ? "/srv/lobste.rs/log/production.log" : $stdout)
+  config.logger = ActiveSupport::Logger.new(Rails.env.production? ? "/srv/lobsters/log/production.log" : $stdout)
   config.logger.formatter = proc { |severity, datetime, progname, msg| "#{msg}\n" }
   config.lograge.logger = config.logger
 
