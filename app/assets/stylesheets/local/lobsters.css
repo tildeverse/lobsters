@@ -45,10 +45,10 @@ span.hat_sysop span.crown {
 	background-color: var(--color-lobsters-hat-sysop-crown-fill);
 }
 
-#l_holder {
+#logo {
 	position: relative;
 }
-#l_holder:after {
+#logo:after {
 	content: '';
 	background: transparent url("/favicon-16x16.png") no-repeat center;
 	position: absolute;
