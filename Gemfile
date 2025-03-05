@@ -2,18 +2,27 @@ source "https://rubygems.org"
 
 gem "rails"
 
+# database and caching
+gem "maxminddb"
+gem "solid_cache"
+gem "sqlite3"
 gem "trilogy"
+
+# jobs
+gem "solid_queue"
+gem "mission_control-jobs"
 
 # rails
 gem "scenic"
 gem "scenic-mysql_adapter"
 gem "mysql2"
+gem "scenic_sqlite_adapter"
 gem "activerecord-typedstore"
-gem "sprockets-rails", require: "sprockets/railtie"
+gem "propshaft"
+gem "importmap-rails", "~> 2.0"
 
 # js
 gem "json"
-gem "uglifier"
 
 # deployment
 gem "actionpack-page_caching"
@@ -40,6 +49,7 @@ gem "stackprof"
 gem "prosopite"
 
 gem "builder" # for rss
+gem "faker" # for factory data and /cabinet
 gem "oauth" # for linking accounts
 gem "mail" # for parsing incoming mail
 gem "sitemap_generator" # for better search engine indexing
@@ -57,12 +67,11 @@ group :test, :development do
   gem "letter_opener"
   gem "rspec-rails"
   gem "factory_bot_rails"
+  gem "foreman"
   gem "standard"
   gem "standard-performance"
   gem "standard-rails"
-  gem "standard-sorbet"
   gem "super_diff"
-  gem "faker"
   gem "byebug"
   gem "rb-readline"
   gem "vcr"

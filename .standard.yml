@@ -1,5 +1,7 @@
 ignore:
   - '**/*':
+    # stop deleting variables in the middle of a refactor you meddling fuck
+    - Lint/UselessAssignment
     # there's no "don't delete these records or shit will be on fire" option,
     # just various "sure automatically destroy lots of data yolo" options
     - Rails/HasManyOrHasOneDependent
@@ -7,9 +9,6 @@ ignore:
     - Rails/OrderById
     # joins/extracted data doesn't need a timestamp
     - Rails/CreateTableWithTimestamps
-  # it's mad about the class variables and I don't want to risk the refactor now
-  - 'extras/**/*':
-    - Naming/VariableName
   # migrations are not live code
   - 'db/migrate/201*'
   - 'db/migrate/2020*'
@@ -19,8 +18,10 @@ ignore:
 plugins:
   - standard-performance
   - standard-rails
-  - standard-sorbet
 # Needs to be packaged as a plugin https://github.com/standardrb/standard#user-content-plugins
 #  - use_form_with:
 #      require_path: extras/prohibit_form_for_and_form_tag
 #      plugin_class_name: RuboCop::Cop::Style::DisallowFormForandFormTag
+
+extend_config:
+  - .custom_cops.yml

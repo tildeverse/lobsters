@@ -4,9 +4,9 @@
 <% already_printed_newest_line = false %>
 <ol class="stories list <%= action_name == "hidden" ? "show_hidden" : "" %>">
   <% @stories.each do |story| %>
-    <% if action_name == "newest" &&
-        !already_printed_newest_line &&
-        @user&.last_read_newest&.after?(story.created_at) %>
+    <% if action_name == "newest" && 
+      !already_printed_newest_line && 
+      @last_read_story == story %>
       <div class="last_read_newest">Last Read</div>
       <% already_printed_newest_line = true %>
     <% end %>
@@ -52,10 +52,12 @@ class="story <%= story.current_upvoted? ? "upvoted" : "" %>
         <a class="u-url" href="<%= story.url_or_comments_path %>" rel="ugc <%= story.send_referrer? ? '' : 'noreferrer' %>"><%= story.title %></a>
       <% end %>
       <% if story.is_gone? %>
-        [Story removed by <%= story.is_moderated? ? "moderator" :
-          "submitter" %>]
+        [Story removed by <%= story.is_moderated? ? "moderator" : "submitter" %>]
       <% end %>
     </span>
+    <% if story.stories_count > 0 %>
+      <span class="merge"></span><%= story.stories_count + 1 %>
+    <% end %>
     <% if story.markeddown_description.present? %>
       <a class="description_present" title="<%= truncate(story.description,
         :length => 500) %>" href="<%= story.comments_path %>">&#x2636;</a>
@@ -66,8 +68,10 @@ class="story <%= story.current_upvoted? ? "upvoted" : "" %>
           <%= tag_link(tag) %>
         <% end %>
       </span>
-      <% if story.domain.present? %>
-        <a class="domain" href="<%= domain_path(story.domain) %>"><%= story.domain.domain %></a>
+      <% if story.origin.present? %>
+        <%= link_to story.origin.identifier, origin_path(story.origin), class: 'domain' %>
+      <% elsif story.domain.present? %>
+        <%= link_to story.domain.domain, domain_path(story.domain), class: 'domain' %>
       <% end %>
 
       <% if single_story %>
@@ -75,7 +79,7 @@ class="story <%= story.current_upvoted? ? "upvoted" : "" %>
           <br>
           <span class="merge"></span>
           <span class="link">
-            <a href="<%= ms.url_or_comments_path %>" rel="ugc <%= ms.send_referrer? ? '' : 'noreferrer' %>"%><%= ms.title %></a>
+            <a href="<%= ms.url_or_comments_path %>" rel="ugc <%= ms.send_referrer? ? '' : 'noreferrer' %>"><%= ms.title %></a>
           </span>
           <span class="tags">
             <% ms.tags.each do |tag| %>
@@ -88,20 +92,20 @@ class="story <%= story.current_upvoted? ? "upvoted" : "" %>
             <a class="domain" href="<%= domain_path(ms.domain) %>"><%= ms.domain.domain %></a>
           <% end %>
           <span class="byline">
+            <span><%= ms.user_is_author? ? "authored by" : "via" %></span>
             <% if (@user && @user.show_avatars?) || !@user %>
               <%= link_to avatar_img(ms.user, 16), ms.user %>
             <% end %>
-            <% if ms.user_is_author? %>
-              <span> authored by </span>
-            <% else %>
-              <span> via </span>
-            <% end %>
             <%= styled_user_link ms.user, story, class: ['u-author', 'h-card'] %>
 
-            <%= time_ago_in_words_label(ms.created_at) %>
+            <%= how_long_ago_label(ms.created_at) %>
             <% if ms.is_editable_by_user?(@user) %>
               <span> | </span>
               <a href="<%= edit_story_path(ms.short_id) %>">edit</a>
+            <% end %>
+            <% if @user&.is_moderator? %>
+              <span> | </span>
+              <a href="<%= edit_mod_story_path(ms.short_id) %>">mod edit</a>
             <% end %>
           </span>
         <% end %>
@@ -118,7 +122,7 @@ class="story <%= story.current_upvoted? ? "upvoted" : "" %>
 
     <div class="byline">
       <% if (@user && @user.show_avatars?) || !@user %>
-        <%= link_to avatar_img(story.user, 16), story.user %>
+        <%= link_to avatar_img(story.user, 16), user_path(story.user) %>
       <% end %>
       <% if story.previewing %>
         <% if story.user_is_author? %>
@@ -137,15 +141,18 @@ class="story <%= story.current_upvoted? ? "upvoted" : "" %>
         <% end %>
         <%= styled_user_link story.user, story, class: ['u-author', 'h-card'] %>
 
-        <%= time_ago_in_words_label(story.created_at) %>
+        <%= how_long_ago_label(story.created_at) %>
 
         <% if story.is_editable_by_user?(@user) %>
           <span> | </span>
-          <a href="<%= edit_story_path(story.short_id) %>" class="<%=
-            story.has_suggestions? ? "story_has_suggestions" : "" %>">edit</a>
+          <a href="<%= edit_story_path(story.short_id) %>" class="<%= story.has_suggestions? ? "story_has_suggestions" : "" %>">edit</a>
+        <% end %>
+        <% if @user&.is_moderator? %>
+          <span> | </span>
+          <a href="<%= edit_mod_story_path(story.short_id) %>" class="<%= story.has_suggestions? ? "story_has_suggestions" : "" %>">mod edit</a>
         <% end %>
         <% if story.can_have_suggestions_from_user?(@user) %>
-          <span> | </span><%= link_to "suggest", story_suggest_path(story.short_id),
+          <span> | </span><%= link_to "suggest", new_story_suggestion_path(story.short_id),
             :class => "suggester" %>
         <% end %>
         <% if !story.is_gone? && @user %>
@@ -165,6 +172,10 @@ class="story <%= story.current_upvoted? ? "upvoted" : "" %>
             <span> | </span><%= link_to "hide", story_hide_path(story.short_id),
               :class => "hider" %>
           <% end %>
+          <% if single_story && story.disownable_by_user?(@user) %>
+          |
+          <%= button_to("disown", story_disown_path(story.short_id), form_class: "disowner-form", params: { type: 'story' }) %>
+          <% end %>
           <% if single_story && story.hider_count > 0 %>
             (hidden by <%= pluralize(story.hider_count, "user") %>)
           <% end %>
@@ -181,7 +192,7 @@ class="story <%= story.current_upvoted? ? "upvoted" : "" %>
           <span> | </span>
           <span class="dropdown_parent">
             <input id="archive_<%= story.short_id %>" class="archive_button" type="checkbox">
-            <label for="archive_<%= story.short_id %>">archive</label>
+            <label for="archive_<%= story.short_id %>">caches</label>
             <div class="archive-dropdown">
               <a href="<%= story.archiveorg_url %>">Archive.org</a>
               <a href="<%= story.archivetoday_url %>">Archive.today</a>

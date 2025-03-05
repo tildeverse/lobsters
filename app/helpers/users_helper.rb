@@ -41,8 +41,7 @@ module UsersHelper
     if content.is_a?(Story) && content.user_is_author?
       html_options[:class].push "user_is_author"
     end
-    if content.is_a?(Comment) && content.story &&
-        content.story.user_is_author? && content.story.user_id == user.id
+    if content.is_a?(Comment) && content.story&.user_is_author? && content.story.user_id == user.id
       html_options[:class].push "user_is_author"
     end
 
@@ -54,7 +53,7 @@ module UsersHelper
     end
     html_options.delete(:class) if html_options[:class].empty?
 
-    link_to(user.username, user, html_options)
+    link_to(user.username, user_path(user), html_options)
   end
 
   def user_karma(user)

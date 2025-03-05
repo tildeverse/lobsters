@@ -12,15 +12,15 @@ describe "stories", type: :request do
 
     context "html" do
       it "returns an error when story URL is missing" do
-        expect {
-          post "/stories/check_url_dupe.html", params: {story: {url: ""}}
-        }.to raise_error(ActionController::ParameterMissing)
+        post "/stories/check_url_dupe.html", params: {story: {url: ""}}
+        expect(response).to have_attributes(status: 400, body: "400 param is missing or the value is empty or invalid: No URL")
       end
 
       it "returns previous discussions for an existing story" do
         post "/stories/check_url_dupe.html", params: {story: {url: story.url}}
 
-        expect(response).to be_successful
+        # workaround: https://github.com/rspec/rspec-rails/issues/2592
+        expect(response).to have_http_status(200)
 
         expect(response.body).to include("Previous discussions for this story")
         expect(response.body).to include(story.title)
@@ -34,7 +34,7 @@ describe "stories", type: :request do
 
         post "/stories/check_url_dupe.html", params: {story: {url: merged_story.url}}
 
-        expect(response).to be_successful
+        expect(response).to have_http_status(200)
 
         expect(response.body).to include("Previous discussions for this story")
         expect(response.body).to include(merged_story.title)
@@ -51,7 +51,7 @@ describe "stories", type: :request do
         post "/stories/check_url_dupe.json",
           params: {story: {title: "some other title", url: story.url}}
 
-        expect(response).to be_successful
+        expect(response).to have_http_status(200)
 
         json = JSON.parse(response.body)
 
@@ -70,7 +70,7 @@ describe "stories", type: :request do
         post "/stories/check_url_dupe.json",
           params: {story: {title: "some other title", url: story.url[0...-1]}}
 
-        expect(response).to be_successful
+        expect(response).to have_http_status(200)
 
         json = JSON.parse(response.body)
 
@@ -82,7 +82,7 @@ describe "stories", type: :request do
         post "/stories/check_url_dupe.json",
           params: {story: {title: "some other title", url: "invalid_url"}}
 
-        expect(response).to be_successful
+        expect(response).to have_http_status(200)
 
         json = JSON.parse(response.body)
 
@@ -90,16 +90,18 @@ describe "stories", type: :request do
         expect(json.fetch("similar_stories").count).to eq(0)
       end
 
-      it "throws a 400 if there's no URL present" do
-        expect {
-          post "/stories/check_url_dupe.json",
-            params: {story: {url: ""}}
-        }.to raise_error(ActionController::ParameterMissing)
+      context "with invalid parameters" do
+        it "throws a 400 when URL is empty" do
+          post "/stories/check_url_dupe.json", params: {story: {url: ""}}
+          expect(response).to have_http_status(:bad_request)
+          expect(JSON.parse(response.body)).to eq({"error" => "param is missing or the value is empty or invalid: No URL"})
+        end
 
-        expect {
-          post "/stories/check_url_dupe.json",
-            params: {story: {}}
-        }.to raise_error(ActionController::ParameterMissing)
+        it "throws a 400 when URL parameter is missing" do
+          post "/stories/check_url_dupe.json", params: {story: {}}
+          expect(response).to have_http_status(:bad_request)
+          expect(JSON.parse(response.body)).to eq({"error" => "param is missing or the value is empty or invalid: No URL"})
+        end
       end
     end
   end
@@ -140,7 +142,7 @@ describe "stories", type: :request do
     it "can be merged by mod" do
       sign_in mod
       s = create(:story)
-      put "/stories/#{s.short_id}",
+      put "/mod/stories/#{s.short_id}",
         params: {
           story: {
             merge_story_short_id: story.short_id,
@@ -179,7 +181,7 @@ describe "stories", type: :request do
       story = create(:story)
       get story_path(story)
 
-      expect(response).to be_successful
+      expect(response).to have_http_status(200)
       expect(response.body).to include(story.title)
     end
 
@@ -191,6 +193,7 @@ describe "stories", type: :request do
       before do
         story.is_deleted = true
         story.editor = story.user
+        story.tags_was = story.tags.to_a
         story.save!
       end
 
@@ -225,6 +228,7 @@ describe "stories", type: :request do
       before do
         story.moderation_reason = reason
         story.is_deleted = true
+        story.tags_was = story.tags.to_a
         story.editor = mod
         story.save!
       end
@@ -293,6 +297,28 @@ describe "stories", type: :request do
     end
   end
 
+  describe "disowning" do
+    let(:inactive_user) { create(:user, :inactive) }
+
+    before do
+      sign_in user
+      story.update!(created_at: (Story::DELETEABLE_DAYS + 1).days.ago)
+    end
+
+    it "returns 302 for non-xhr request" do
+      expect {
+        post "/stories/#{story.short_id}/disown"
+        expect(response.status).to eq(302)
+      }.to change { story.reload.user }.from(story.user).to(inactive_user)
+    end
+
+    it "returns 200 for xhr request" do
+      expect {
+        post "/stories/#{story.short_id}/disown", xhr: true
+        expect(response.status).to eq(200)
+      }.to change { story.reload.user }.from(story.user).to(inactive_user)
+    end
+  end
   describe "adding suggestions to a story"
 
   describe "user editing an editable story"

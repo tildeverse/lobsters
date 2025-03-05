@@ -11,15 +11,15 @@ class Utils
 
     url.slice! %r{#.*$} # remove anchor
     url.slice! %r{/$} # remove trailing slash
-    url = url.sub %r{\.htm$}, ".html" # fix microsoft naming
+    url.slice! %r{\.html?$} # remove .htm, .html
 
     # remove some common "directory index" pages that are commonly served for dirs
-    url.slice! %r{/index\.html$}
+    url.slice! %r{/index$} # includes index.html? from previous
     url.slice! %r{/index\.php}
     url.slice! %r{/Default\.aspx$}
 
     url.slice! %r{https?://} # consider http and https the same
-    url.slice! %r{^(www\d*\.)} # remove www\d* from domain
+    url.sub!(/\Awww\d*\.(.+?\..+)/, '\1') # remove www\d* from domain if the url is not like www10.org
 
     url, *args = url.split(/[&\?]/) # trivia: ?a=1?c=2 is a valid uri
     url ||= "" # if original url was just '#', ''.split made url nil
@@ -63,7 +63,7 @@ class Utils
   def self.silence_stream(*streams)
     on_hold = streams.collect(&:dup)
     streams.each do |stream|
-      stream.reopen("/dev/null")
+      stream.reopen(File::NULL)
       stream.sync = true
     end
     yield

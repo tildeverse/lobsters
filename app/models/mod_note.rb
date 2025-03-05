@@ -10,8 +10,8 @@ class ModNote < ApplicationRecord
   belongs_to :user,
     inverse_of: :mod_notes
 
-  scope :recent, -> { where("created_at >= ?", 1.week.ago).order("created_at desc") }
-  scope :for, ->(user) { includes(:moderator).where(user_id: user).order("created_at desc") }
+  scope :recent, -> { where("created_at >= ?", 1.week.ago).order(created_at: :desc) }
+  scope :for, ->(user) { includes(:moderator).where(user_id: user).order(created_at: :desc) }
 
   validates :note, :markeddown_note, presence: true, length: {maximum: 65_535}
 
@@ -53,6 +53,28 @@ class ModNote < ApplicationRecord
     )
   end
 
+  def self.record_reparent!(reparent_user, mod, reason)
+    old_inviter_url = Rails.application.routes.url_helpers.user_url(
+      reparent_user.invited_by_user,
+      host: Rails.application.domain
+    )
+    create_without_dupe!(
+      moderator: mod,
+      user: reparent_user,
+      note: "Reparented from [#{reparent_user.invited_by_user.username}](#{old_inviter_url}) to #{mod.username} with reason: #{reason}"
+    )
+
+    reparent_user_url = Rails.application.routes.url_helpers.user_url(
+      reparent_user,
+      host: Rails.application.domain
+    )
+    create_without_dupe!(
+      moderator: mod,
+      user: reparent_user.invited_by_user,
+      note: "Admin reparented their invitee [#{reparent_user.username}](#{reparent_user_url}) to #{mod.username} with reason: #{reason}"
+    )
+  end
+
   def self.tattle_on_banned_login(user)
     # rubocop:disable Rails/SaveBang
     create(
@@ -61,6 +83,21 @@ class ModNote < ApplicationRecord
       note: "Attempted to log in while banned."
     )
     # rubocop:enable Rails/SaveBang
+  end
+
+  def self.tattle_on_brigading!(story)
+    create_without_dupe!(
+      moderator: InactiveUser.inactive_user,
+      user: story.user,
+      created_at: Time.current,
+      note: "Attempted to submit a project's bug tracker or discussion:\n" \
+        "- user joined: #{how_long_ago(story.user.created_at)}\n" \
+        "- url: #{story.url}\n" \
+        "- title: #{story.title}\n" \
+        "- user_is_author: #{story.user_is_author}\n" \
+        "- tags: #{story.tags.map(&:tag).join(" ")}\n" \
+        "- description: #{story.description}\n"
+    )
   end
 
   def self.tattle_on_deleted_login(user)
@@ -135,11 +172,11 @@ class ModNote < ApplicationRecord
       user: story.user,
       created_at: Time.current,
       note: "Attempted to submit a story with tag(s) not allowed to new users:\n" \
-        "- user joined: #{time_ago_in_words(story.user.created_at)}\n" \
+        "- user joined: #{how_long_ago(story.user.created_at)}\n" \
         "- url: #{story.url}\n" \
         "- title: #{story.title}\n" \
         "- user_is_author: #{story.user_is_author}\n" \
-        "- tags: #{story.tags_a.join(" ")}\n" \
+        "- tags: #{story.tags.map(&:tag).join(" ")}\n" \
         "- description: #{story.description}\n"
     )
   end
@@ -150,11 +187,42 @@ class ModNote < ApplicationRecord
       user: story.user,
       created_at: Time.current,
       note: "Attempted to post a story from a #{reason} domain:\n" \
-        "- user joined: #{time_ago_in_words(story.user.created_at)}\n" \
+        "- user joined: #{how_long_ago(story.user.created_at)}\n" \
         "- url: #{story.url}\n" \
         "- title: #{story.title}\n" \
         "- user_is_author: #{story.user_is_author}\n" \
-        "- tags: #{story.tags_a.join(" ")}\n" \
+        "- tags: #{story.tags.map(&:tag).join(" ")}\n" \
+        "- description: #{story.description}\n"
+    )
+  end
+
+  def self.tattle_on_story_origin!(story, reason)
+    create_without_dupe!(
+      moderator: InactiveUser.inactive_user,
+      user: story.user,
+      created_at: Time.current,
+      note: "Attempted to post a story from a #{reason} origin:\n" \
+        "- user joined: #{how_long_ago(story.user.created_at)}\n" \
+        "- url: #{story.url}\n" \
+        "- origin: #{story.origin.identifier}\n" \
+        "- title: #{story.title}\n" \
+        "- user_is_author: #{story.user_is_author}\n" \
+        "- tags: #{story.tags.map(&:tag).join(" ")}\n" \
+        "- description: #{story.description}\n"
+    )
+  end
+
+  def self.tattle_on_traffic_attribution!(story)
+    create_without_dupe!(
+      moderator: InactiveUser.inactive_user,
+      user: story.user,
+      created_at: Time.current,
+      note: "Attempted to submit a URL attributing traffic:\n" \
+        "- user joined: #{how_long_ago(story.user.created_at)}\n" \
+        "- url: #{story.url}\n" \
+        "- title: #{story.title}\n" \
+        "- user_is_author: #{story.user_is_author}\n" \
+        "- tags: #{story.tags.map(&:tag).join(" ")}\n" \
         "- description: #{story.description}\n"
     )
   end

@@ -56,10 +56,14 @@ class User < ApplicationRecord
     class_name: "Hat",
     inverse_of: :user
 
-  has_secure_password
+  # As of Rails 8.0, `has_secure_password` generates a `password_reset_token`
+  # method that shadows the explicit `password_reset_token` attribute.
+  # So we need to explictily disable that.
+  has_secure_password(reset_token: false)
 
   typed_store :settings do |s|
     s.string :prefers_color_scheme, default: "system"
+    s.string :prefers_contrast, default: "system"
     s.boolean :email_notifications, default: false
     s.boolean :email_replies, default: false
     s.boolean :pushover_replies, default: false
@@ -82,6 +86,7 @@ class User < ApplicationRecord
   end
 
   validates :prefers_color_scheme, inclusion: %w[system light dark]
+  validates :prefers_contrast, inclusion: %w[system normal high]
 
   validates :email,
     length: {maximum: 100},
@@ -101,7 +106,7 @@ class User < ApplicationRecord
     format: {with: /\A#{VALID_USERNAME}\z/o},
     length: {maximum: 50},
     uniqueness: {case_sensitive: false}
-
+  validate :underscores_and_dashes_in_username
   validates :password_reset_token,
     length: {maximum: 75}
   validates :session_token,
@@ -126,6 +131,9 @@ class User < ApplicationRecord
 
   validates :karma,
     presence: true
+
+  validates :settings,
+    length: {maximum: 16_777_215}
 
   validates_each :username do |record, attr, value|
     if BANNED_USERNAMES.include?(value.to_s.downcase) || value.starts_with?("tag-")
@@ -172,6 +180,18 @@ class User < ApplicationRecord
 
   # minimum number of submitted stories before checking self promotion
   MIN_STORIES_CHECK_SELF_PROMOTION = 2
+
+  def underscores_and_dashes_in_username
+    username_regex = username.gsub(/_|-/, "[-_]")
+    return unless username_regex.include?("[-_]")
+
+    collisions = User.where("username REGEXP ?", username_regex).where.not(id: id)
+    errors.add(:username, "is already in use (perhaps swapping _ and -)") if collisions.any?
+  end
+
+  def self./(username)
+    find_by! username:
+  end
 
   def self.username_regex_s
     "/^" + VALID_USERNAME.to_s.gsub(/(\?-mix:|\(|\))/, "") + "$/"
@@ -357,7 +377,7 @@ class User < ApplicationRecord
         return res
       end
     rescue => e
-      Rails.logger.error "error fetching #{gravatar_url}: #{e.message}"
+      # Rails.logger.error "error fetching #{gravatar_url}: #{e.message}"
     end
 
     nil
@@ -385,7 +405,7 @@ class User < ApplicationRecord
       sent_messages.update_all(deleted_by_author: true)
       received_messages.update_all(deleted_by_recipient: true)
 
-      invitations.destroy_all
+      invitations.unused.update_all(used_at: Time.now.utc)
 
       roll_session_token
 
@@ -410,11 +430,19 @@ class User < ApplicationRecord
   # ensures some users talk to a mod before reactivating
   def good_riddance?
     return if is_banned? # https://www.youtube.com/watch?v=UcZzlPGnKdU
+
+    recent_comments_count = comments
+      .where(created_at: 30.days.ago..)
+      .where(is_deleted: true).count
+
+    recent_stories_count = stories
+      .where(created_at: 30.days.ago..)
+      .where(is_deleted: true, is_moderated: true).count
+
+    total_count = recent_comments_count + recent_stories_count
+
     self.email = "#{username}@lobsters.example" if \
-      karma < 0 ||
-        (comments.where("created_at >= now() - interval 30 day AND is_deleted").count +
-         stories.where("created_at >= now() - interval 30 day AND is_deleted AND is_moderated")
-           .count >= 3) ||
+      karma < 0 || total_count > 3 ||
         FlaggedCommenters.new("90d").check_list_for(self)
   end
 
@@ -609,10 +637,11 @@ class User < ApplicationRecord
   end
 
   def votes_for_others
-    votes.left_outer_joins(:story, :comment)
+    votes
+      .left_outer_joins(:story, :comment)
       .includes(comment: :user, story: :user)
       .where("(votes.comment_id is not null and comments.user_id <> votes.user_id) OR " \
-             "(votes.comment_id is null and stories.user_id <> votes.user_id)")
-      .order("id DESC")
+                 "(votes.comment_id is null and stories.user_id <> votes.user_id)")
+      .order(id: :desc)
   end
 end

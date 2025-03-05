@@ -73,7 +73,25 @@ Rails.application.routes.draw do
     get "/domain/:id/page/:page", to: redirect("/domains/%{id}/page/%{page}")
     get "/domains/:id(.:format)" => "home#for_domain", :as => "domain"
     get "/domains/:id/page/:page" => "home#for_domain"
+    get "/domains/:id/origins" => "origins#for_domain", :as => "domain_origins"
+
     resources :domains, only: [:create, :edit, :update]
+    patch "/domains_ban/:id" => "domains_ban#update", :as => "ban_domain"
+    post "/domains_ban/:id" => "domains_ban#create_and_ban", :as => "create_and_ban_domain"
+
+    # below `resources` so that /edit isn't taken as an identifier
+    get "/domains/:id/:author", to: redirect("/origins/%{id}/%{author}")
+    get "/domain/:domain/:identifier(.:format)", to: redirect("/domains/%{domain}/%{identifier}")
+    get "/domain/:domain/:identifier/page/:page", to: redirect("/domains/%{domain}/%{idetifier}/page/%{page}")
+  end
+
+  constraints identifier: /(.+)(?=\.json|\.rss|$|\/)/ do
+    # resources :origin, only: [:show, :edit, :update]
+    get "/origins/:identifier/edit(.:format)" => "origins#edit", :as => "edit_origin"
+    patch "/origins/:identifier" => "origins#update", :as => "update_origin"
+    get "/origins/:identifier(.:format)" => "home#for_origin", :as => "origin"
+    # leaving out pagination because identifiers (eg 'github.com/alice') can include slashes
+    # get "/origins/:identifier/page/:page" => "home#for_domain"
   end
 
   get "/search" => "search#index"
@@ -93,8 +111,12 @@ Rails.application.routes.draw do
     post "unhide"
     post "save"
     post "unsave"
-    get "suggest"
-    post "suggest", action: "submit_suggestions"
+    post "disown"
+    resources :suggestions, only: [:new, :create]
+
+    # Mapping old routes to new routes. can be safely removed after the next deployment
+    get "suggest", to: redirect("/stories/suggestions/new", status: 302)
+    post "suggest", to: redirect("/stories/suggestions", status: 307)
   end
   post "/stories/fetch_url_attributes", format: "json"
   post "/stories/preview" => "stories#preview"
@@ -216,8 +238,8 @@ Rails.application.routes.draw do
 
   resources :hat_requests, except: [:edit] do
     member do
-      post :update, as: :update
-      delete :delete, as: :destroy
+      post :approve
+      post :reject
     end
   end
   resources :hats, except: [:new, :update, :destroy] do
@@ -240,11 +262,23 @@ Rails.application.routes.draw do
   get "/mod/notes(/:period)" => "mod_notes#index", :as => "mod_notes"
   post "/mod/notes" => "mod_notes#create"
 
+  namespace :mod do
+    resources :reparents, only: [:new, :create]
+    resources :stories, only: [:edit, :update] do
+      patch "undelete"
+      patch "destroy"
+    end
+  end
+
+  mount MissionControl::Jobs::Engine, at: "/jobs"
+
   get "/privacy" => "about#privacy"
   get "/about" => "about#about"
   get "/chat" => "about#chat"
 
   get "/stats" => "stats#index"
+
+  get "/cabinet" => "cabinet#index"
 
   post "/csp-violation-report" => "csp#violation_report"
 end

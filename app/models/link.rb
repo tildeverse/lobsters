@@ -6,9 +6,9 @@ class Link < ApplicationRecord
   belongs_to :to_story, class_name: "Story", optional: true
   belongs_to :to_comment, class_name: "Comment", optional: true
 
-  validates :url, length: {maximum: 250, allow_nil: false}
+  validates :url, length: {maximum: 250, allow_nil: false}, presence: true
   validate :valid_url
-  validates :normalized_url, length: {maximum: 255, allow_nil: false}
+  validates :normalized_url, length: {maximum: 255, allow_nil: false}, presence: true
   validates :title, length: {maximum: 255}
   validate :validate_from_presence_xor
   validate :validate_only_one_to
@@ -21,6 +21,12 @@ class Link < ApplicationRecord
   validates :to_comment, uniqueness: {scope: [:from_story, :from_comment]}, if: ->(l) { l.to_comment.present? }
   validates :to_story, uniqueness: {scope: [:from_story, :from_comment]}, if: ->(l) { l.to_story.present? }
   # rubocop:enable Rails/UniqueValidationWithoutIndex
+
+  scope :recently_linked_from_comments, ->(url) {
+    joins(:from_comment).includes(:from_comment)
+      .where(from_comment: {created_at: (7.days.ago)..})
+      .where(normalized_url: Utils.normalize(url))
+  }
 
   def url=(u)
     return if u.blank?

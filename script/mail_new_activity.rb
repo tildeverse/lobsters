@@ -1,9 +1,6 @@
 #!/usr/bin/env ruby
 
-APP_PATH = File.expand_path("../../config/application", __FILE__)
-require File.expand_path("../../config/boot", __FILE__)
-require APP_PATH
-Rails.application.require_environment!
+require File.expand_path("../../config/environment", __FILE__)
 
 class String
   def quoted_printable(encoded_word = false)
@@ -155,7 +152,7 @@ if __FILE__ == $PROGRAM_NAME
     3.days.ago
   ).order(:id).each do |c|
     # allow some time for newer comments to be edited before sending them out
-    if (Time.current - (c.updated_at || c.created_at)) < 2.minutes
+    if (Time.current - c.last_edited_at) < 2.minutes
       break
     end
 

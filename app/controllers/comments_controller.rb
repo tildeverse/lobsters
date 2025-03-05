@@ -49,21 +49,16 @@ class CommentsController < ApplicationController
 
     if comment.valid? && params[:preview].blank? && comment.save
       comment.current_vote = {vote: 1}
+      comment.story.touch(:last_comment_at)
+      # not using .touch because the :touch on the parent_comment association will already touch the
+      # upated_at columns up the reply chain to the story once
+      comment.parent_comment&.update_column(:last_reply_at, Time.current)
       render_created_comment(comment)
     else
       comment.score = 1
       comment.current_vote = {vote: 1}
 
       preview comment
-    end
-  end
-
-  def render_created_comment(comment)
-    if request.xhr?
-      render partial: "comments/postedreply", layout: false,
-        content_type: "text/html", locals: {comment: comment}
-    else
-      redirect_to comment.path
     end
   end
 
@@ -133,7 +128,7 @@ class CommentsController < ApplicationController
     if request.xhr?
       render partial: "commentbox", locals: {comment: comment, story: story}
     else
-      parents = comment.parents.with_thread_attributes.for_presentation
+      parents = comment.parents.for_presentation
 
       parent_ids = parents.map(&:id)
       @votes = Vote.comment_votes_by_user_for_comment_ids_hash(@user&.id, parent_ids)
@@ -178,10 +173,16 @@ class CommentsController < ApplicationController
     end
 
     InactiveUser.disown! comment
-    comment = find_comment
 
-    render partial: "comment", layout: false,
-      content_type: "text/html", locals: {comment: comment}
+    if request.xhr?
+      comment = find_comment
+      show_story = ActiveModel::Type::Boolean.new.cast(params[:show_story])
+      show_tree_lines = ActiveModel::Type::Boolean.new.cast(params[:show_tree_lines])
+
+      render partial: "comment", locals: {comment: comment, show_story: show_story, show_tree_lines: show_tree_lines}
+    else
+      redirect_back fallback_location: root_path
+    end
   end
 
   def update
@@ -190,6 +191,7 @@ class CommentsController < ApplicationController
     end
 
     comment.comment = params[:comment]
+    comment.last_edited_at = Time.current
     comment.hat_id = nil
     comment.hat = @user.wearable_hats.find_by(short_id: params[:hat_id])
 
@@ -197,6 +199,9 @@ class CommentsController < ApplicationController
       votes = Vote.comment_votes_by_user_for_comment_ids_hash(@user.id, [comment.id])
       comment.current_vote = votes[comment.id]
       comment.vote_summary = Vote.comment_vote_summaries([comment.id])[comment.id]
+      # not using .touch because the :touch on the parent_comment association will already touch the
+      # upated_at columns up the reply chain to the story once
+      comment.parent_comment&.touch(:last_reply_at)
 
       render partial: "comments/comment",
         layout: false,
@@ -227,7 +232,7 @@ class CommentsController < ApplicationController
     end
 
     Vote.vote_thusly_on_story_or_comment_for_user_because(
-      1, comment.story_id, comment.id, @user.id, params[:reason]
+      1, comment.story_id, comment.id, @user.id, nil
     )
 
     render plain: "ok"
@@ -270,7 +275,7 @@ class CommentsController < ApplicationController
 
     @comments = Comment.accessible_to_user(@user)
       .not_on_story_hidden_by(@user)
-      .order("id DESC")
+      .order(id: :desc)
       .includes(:user, :hat, story: :user)
       .joins(:story).where.not(stories: {is_deleted: true})
       .limit(COMMENTS_PER_PAGE)
@@ -318,7 +323,7 @@ class CommentsController < ApplicationController
 
     @comments = Comment.accessible_to_user(@user)
       .where.not(user_id: @user.id)
-      .order("id DESC")
+      .order(id: :desc)
       .includes(:user, :hat, story: :user)
       .joins(:votes).where(votes: {user_id: @user.id, vote: 1})
       .joins(:story).where.not(stories: {is_deleted: true})
@@ -378,6 +383,20 @@ class CommentsController < ApplicationController
 
   private
 
+  def find_comment
+    comment = Comment.where(short_id: params[:id]).first
+    # convenience to use PK (from external queries) without generally permitting enumeration:
+    comment ||= Comment.find(params[:id]) if @user&.is_admin?
+
+    if @user && comment
+      comment.current_vote = Vote.where(user_id: @user.id,
+        story_id: comment.story_id, comment_id: comment.id).first
+      comment.vote_summary = Vote.comment_vote_summaries([comment.id])[comment.id]
+    end
+
+    comment
+  end
+
   def preview(comment)
     comment.previewing = true
     comment.is_deleted = false # show normal preview for deleted comments
@@ -392,17 +411,12 @@ class CommentsController < ApplicationController
       }
   end
 
-  def find_comment
-    comment = Comment.where(short_id: params[:id]).first
-    # convenience to use PK (from external queries) without generally permitting enumeration:
-    comment ||= Comment.find(params[:id]) if @user&.is_admin?
-
-    if @user && comment
-      comment.current_vote = Vote.where(user_id: @user.id,
-        story_id: comment.story_id, comment_id: comment.id).first
-      comment.vote_summary = Vote.comment_vote_summaries([comment.id])[comment.id]
+  def render_created_comment(comment)
+    if request.xhr?
+      render partial: "comments/postedreply", layout: false,
+        content_type: "text/html", locals: {comment: comment}
+    else
+      redirect_to comment.path
     end
-
-    comment
   end
 end

@@ -43,3 +43,5 @@ config/*.sphinx.conf
 config/unicorn.conf.rb
 config/scout_apm.yml
 .env
+lib/tasks/deploy.rake
+storage/

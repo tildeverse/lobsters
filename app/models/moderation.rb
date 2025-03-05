@@ -10,6 +10,8 @@ class Moderation < ApplicationRecord
     optional: true
   belongs_to :domain,
     optional: true
+  belongs_to :origin,
+    optional: true
   belongs_to :story,
     optional: true
   belongs_to :tag,
@@ -19,13 +21,28 @@ class Moderation < ApplicationRecord
   belongs_to :category,
     optional: true
 
-  scope :for, ->(user) {
+  scope :for_user, ->(user) {
     left_outer_joins(:story, :comment)
       .includes(:moderator, comment: [:user, :story], story: :user)
       .where("
         moderations.user_id = ? OR
         stories.user_id = ? OR
         comments.user_id = ?", user, user, user)
+      .order(id: :desc)
+      .limit(20)
+  }
+  scope :for_story, ->(story) {
+    left_outer_joins(:story, :comment)
+      .includes(:moderator, comment: [:user, :story], story: :user)
+      .where("
+        moderations.user_id = ? OR
+        stories.user_id = ? OR
+        comments.user_id = ? OR
+        moderations.story_id = ? OR
+        comments.story_id = ? ",
+        story.user, story.user, story.user, story, story)
+      .order(id: :desc)
+      .limit(20)
   }
 
   validates :action, :reason, length: {maximum: 16_777_215}
@@ -91,7 +108,7 @@ class Moderation < ApplicationRecord
   protected
 
   def one_foreign_key_present
-    fks = [comment_id, domain_id, story_id, category_id, tag_id, user_id].compact.length
+    fks = [comment_id, domain_id, origin_id, story_id, category_id, tag_id, user_id].compact.length
     errors.add(:base, "moderation should be linked to only one object") if fks != 1
   end
 end

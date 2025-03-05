@@ -11,7 +11,7 @@ module TrafficHelper
   def self.traffic_range
     div = PERIOD_LENGTH * 60
     start_at = 90.days.ago
-    result = ActiveRecord::Base.connection.execute <<-SQL
+    result = ActiveRecord::Base.connection.select_all <<-SQL
       select
         min(activity) as low,
         max(activity) as high
@@ -28,7 +28,7 @@ module TrafficHelper
           s.period = c.period and
           s.period = v.period) act;
     SQL
-    result.to_a.first
+    result.to_a.first.values
   end
 
   def self.cache_traffic!
@@ -40,13 +40,13 @@ module TrafficHelper
 
   def self.current_activity
     start_at = PERIOD_LENGTH.minutes.ago.utc
-    result = ActiveRecord::Base.connection.execute <<-SQL
+    result = ActiveRecord::Base.connection.select_all <<-SQL
       select
         (SELECT count(1) AS n_votes   FROM votes    WHERE updated_at >= '#{start_at}') +
         (SELECT count(1) AS n_comment FROM comments WHERE created_at >= '#{start_at}') * 10 +
         (SELECT count(1) AS n_stories FROM stories  WHERE created_at >= '#{start_at}') * 20
     SQL
-    result.to_a.first.first
+    result.to_a.first.first.second
   end
 
   def self.current_intensity(low, high)

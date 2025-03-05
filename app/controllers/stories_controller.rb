@@ -1,23 +1,24 @@
 # typed: false
 
 class StoriesController < ApplicationController
+  include StoryFinder
+
   caches_page :show, if: CACHE_PAGE
 
   before_action :require_logged_in_user_or_400,
     only: [:upvote, :flag, :unvote, :hide, :unhide, :preview, :save, :unsave]
   before_action :require_logged_in_user,
-    only: [:destroy, :create, :edit, :fetch_url_attributes, :new, :suggest]
+    only: [:destroy, :create, :edit, :fetch_url_attributes, :new]
   before_action :verify_user_can_submit_stories, only: [:new, :create]
   before_action :find_user_story, only: [:destroy, :edit, :undelete, :update]
-  before_action :find_story!, only: [:suggest, :submit_suggestions]
   around_action :track_story_reads, only: [:show], if: -> { @user.present? }
-  before_action :show_title_h1, only: [:new, :edit, :suggest]
+  before_action :show_title_h1, only: [:new, :edit]
 
   def create
     @title = "Submit Story"
 
     @story = Story.new(user: @user)
-    @story.attributes = story_params
+    update_story_attributes
 
     if @story.is_resubmit?
       @comment = @story.comments.new(user: @user)
@@ -44,23 +45,18 @@ class StoriesController < ApplicationController
   end
 
   def destroy
-    if !@story.is_editable_by_user?(@user)
+    if !@story.is_editable_by_user?(@user) && !@user.is_moderator?
       flash[:error] = "You cannot edit that story."
       return redirect_to "/"
     end
 
     update_story_attributes
-
-    if @story.user_id != @user.id && @user.is_moderator? && @story.moderation_reason.blank?
-      @story.errors.add(:moderation_reason, message: "is required")
-      return render action: "edit"
-    end
-
     @story.is_deleted = true
     @story.editor = @user
 
     if @story.save
       Keystore.increment_value_for("user:#{@story.user.id}:stories_deleted")
+      Mastodon.delete_post(@story)
     end
 
     redirect_to @story.comments_path
@@ -73,11 +69,6 @@ class StoriesController < ApplicationController
     end
 
     @title = "Edit Story"
-
-    if @story.merged_into_story
-      @story.merge_story_short_id = @story.merged_into_story.short_id
-      User.update_counters @story.user_id, karma: (@story.votes.count * -2)
-    end
   end
 
   def fetch_url_attributes
@@ -126,7 +117,8 @@ class StoriesController < ApplicationController
   end
 
   def preview
-    @story = Story.new(story_params)
+    @story = Story.new
+    update_story_attributes
     @story.user_id = @user.id
     @story.previewing = true
 
@@ -162,7 +154,7 @@ class StoriesController < ApplicationController
       @moderation = Moderation
         .where(story: @story, comment: nil)
         .where("action LIKE '%deleted story%'")
-        .order("id desc")
+        .order(id: :desc)
         .first
     end
     if !@story.can_be_seen_by_user?(@user)
@@ -189,7 +181,7 @@ class StoriesController < ApplicationController
           "twitter:description" => @story.comments_count.to_s + " " +
             "comment".pluralize(@story.comments_count),
           "twitter:image" => Rails.application.root_url +
-            "apple-touch-icon-144.png"
+            "touch-icon-144.png"
         }
 
         if @story.user.mastodon_username.present?
@@ -204,78 +196,6 @@ class StoriesController < ApplicationController
         @comments = @comments.includes(:parent_comment)
         render json: @story.as_json(with_comments: @comments)
       }
-    end
-  end
-
-  def suggest
-    @title = "Suggest Story Changes"
-    if !@story.can_have_suggestions_from_user?(@user)
-      flash[:error] = "You are not allowed to offer suggestions on that story."
-      return redirect_to @story.comments_path
-    end
-
-    if (suggested_tags = @story.suggested_taggings.where(user_id: @user.id)).any?
-      @story.tags_a = suggested_tags.map { |st| st.tag.tag }
-    end
-    if (tt = @story.suggested_titles.where(user_id: @user.id).first)
-      @story.title = tt.title
-    end
-  end
-
-  def submit_suggestions
-    if !@story.can_have_suggestions_from_user?(@user)
-      flash[:error] = "You are not allowed to offer suggestions on that story."
-      return redirect_to @story.comments_path
-    end
-
-    story_user = @story.user
-    inappropriate_tags = Tag
-      .where(tag: params[:story][:tags_a].reject { |t| t.to_s.blank? })
-      .reject { |t| t.can_be_applied_by?(story_user) }
-    if inappropriate_tags.length > 0
-      tag_error = ""
-      inappropriate_tags.each do |t|
-        tag_error += if t.privileged?
-          "User #{story_user.username} cannot apply tag #{t.tag} as they are not a " \
-            "moderator so it has been removed from your suggestion.\n"
-        elsif !t.permit_by_new_users?
-          "User #{story_user.username} cannot apply tag #{t.tag} due to being a new " \
-            "user so it has been removed from your suggestion.\n"
-        else
-          "User #{story_user.username} cannot apply tag #{t.tag} " \
-            "so it has been removed from your suggestion.\n"
-        end
-      end
-      tag_error += ""
-      flash[:error] = tag_error
-    end
-
-    ostory = @story.dup
-
-    @story.title = params[:story][:title]
-    if @story.valid?
-      dsug = false
-      if @story.title != ostory.title
-        @story.save_suggested_title_for_user!(@story.title, @user)
-        dsug = true
-      end
-
-      sugtags = Tag
-        .where(tag: params[:story][:tags_a].reject { |t| t.to_s.strip.blank? })
-        .reject { |t| !t.can_be_applied_by?(story_user) }
-        .map { |s| s.tag }
-      if @story.tags_a.sort != sugtags.sort
-        @story.save_suggested_tags_a_for_user!(sugtags, @user)
-        dsug = true
-      end
-
-      if dsug
-        ostory = @story.reload
-        flash[:success] = "Your suggested changes have been noted."
-      end
-      redirect_to ostory.comments_path
-    else
-      render action: "suggest"
     end
   end
 
@@ -303,6 +223,7 @@ class StoriesController < ApplicationController
       return redirect_to "/"
     end
 
+    @story.last_edited_at = Time.current
     @story.is_deleted = false
     @story.editor = @user
     update_story_attributes
@@ -411,69 +332,61 @@ class StoriesController < ApplicationController
   end
 
   def check_url_dupe
-    raise ActionController::ParameterMissing.new("No URL") if story_params[:url].blank?
+    raise ActionController::ParameterMissing.new("No URL") if params.dig(:story, :url).blank?
     @story = Story.new(user: @user)
-    @story.attributes = story_params
+    update_story_attributes
     @story.already_posted_recently?
 
     respond_to do |format|
+      linking_comments = Link.recently_linked_from_comments(@story.url)
       format.html {
         return render partial: "stories/form_errors", layout: false,
-          content_type: "text/html", locals: {story: @story}
+          content_type: "text/html", locals: {
+            linking_comments: linking_comments,
+            story: @story
+          }
       }
       # json: https://github.com/lobsters/lobsters/pull/555
       format.json {
         similar_stories = @story.public_similar_stories(@user).map(&:as_json)
-
         render json: @story.as_json.merge(similar_stories: similar_stories)
       }
+    end
+  end
+
+  def disown
+    if !((story = find_story) && story.disownable_by_user?(@user))
+      return render plain: "can't find story", status: 400
+    end
+
+    InactiveUser.disown! story
+
+    if request.xhr?
+      @story = find_story
+      @comments = Comment.story_threads(@story).for_presentation
+
+      load_user_votes
+
+      render partial: "listdetail", layout: false, content_type: "text/html", locals: {story: @story, single_story: true}
+    else
+      redirect_to story.short_id_path
     end
   end
 
   private
 
   def story_params
-    p = params.require(:story).permit(
-      :title, :url, :description, :moderation_reason,
-      :merge_story_short_id, :is_unavailable, :user_is_author, :user_is_following,
-      tags_a: []
-    )
-
-    if @user&.is_moderator?
-      p
-    else
-      p.except(:moderation_reason, :merge_story_short_id, :is_unavailable)
-    end
+    ps = params.require(:story).permit(:title, :url, :description, :user_is_author, :user_is_following, tags: [])
+    ps[:tags] = Tag.where(tag: ps[:tags] || @story.tags.map(&:tag), active: true)
+    ps
   end
 
   def update_story_attributes
+    @story.tags_was = @story.tags.to_a
     @story.attributes = if @story.url_is_editable_by_user?(@user)
       story_params
     else
       story_params.except(:url)
-    end
-  end
-
-  def find_story
-    story = Story.find_by(short_id: params[:story_id])
-    # convenience to use PK (from external queries) without generally permitting enumeration:
-    story ||= Story.find(params[:id]) if @user&.is_admin?
-
-    if @user && story
-      story.current_vote = Vote.find_by(
-        user: @user,
-        story: story.id,
-        comment: nil
-      ).try(:vote)
-    end
-
-    story
-  end
-
-  def find_story!
-    @story = find_story
-    if !@story
-      raise ActiveRecord::RecordNotFound
     end
   end
 

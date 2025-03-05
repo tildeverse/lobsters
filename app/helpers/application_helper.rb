@@ -39,6 +39,45 @@ module ApplicationHelper
     raw(html)
   end
 
+  def excerpt_fragment_around_link(html, url)
+    words = 8
+    url = Utils.normalize(url)
+    parsed = Nokogiri::HTML5.fragment(html)
+
+    # first loop: remove other tags by replacing them with their children
+    is_first_link = true
+    parsed.search("*").each do |tag|
+      if tag.name == "a" && Utils.normalize(tag["href"]) == url && is_first_link
+        # do not remove it, just mark that we've seen it
+        is_first_link = false
+      else
+        tag.replace(tag.children)
+      end
+    end
+    # link not found, return start of input
+    if parsed.search("a").empty?
+      return parsed.to_html.split.first(words * 2).join(" ")
+    end
+
+    # merge adjacent text nodes by reparsing
+    parsed = Nokogiri::HTML5.fragment(parsed.to_html)
+
+    # locate the html tag
+    index = parsed.children.find_index { |node| node.name == "a" }
+    # if link hast text to the left
+    if index != 0
+      t = parsed.children.first.text
+      parsed.children.first.replace(t.split.last(words).join(" ") + " ")
+    end
+    # if link has text to the right
+    if index != parsed.children.count - 1
+      t = parsed.children.last.text
+      parsed.children.last.replace(" " + t.split.last(words).join(" "))
+    end
+
+    parsed.to_html
+  end
+
   # limitation: this can't handle generating links based on a hash of options,
   # like { controller: ..., action: ... }
   def link_to_different_page(text, path, options = {})
@@ -56,6 +95,10 @@ module ApplicationHelper
       class_name: options[:class_name],
       confirm: options[:confirm]
     }
+  end
+
+  def page_count(record_count, entries_per_page)
+    (record_count + entries_per_page - 1) / entries_per_page
   end
 
   def page_numbers_for_pagination(max, cur)
@@ -104,12 +147,22 @@ module ApplicationHelper
     end
   end
 
+  # https://discuss.rubyonrails.org/t/proposal-changing-default-value-of-open-to-true-in-the-tag-method-in-actionview-taghelper/82297/2
+  def tag name = nil, options = nil, open = true, escape = true
+    super
+  end
+
   def tag_link(tag)
     link_to tag.tag, tag_path(tag), class: tag.css_class, title: tag.description
   end
 
-  def time_ago_in_words_label(time)
-    ago = time_ago_in_words(time)
+  def how_long_ago_label(time)
+    ago = how_long_ago(time)
     content_tag(:span, ago, title: time.strftime("%F %T %z"))
+  end
+
+  def how_long_ago_link(url, time)
+    ago = how_long_ago(time)
+    content_tag(:a, ago, href: url, title: time.strftime("%F %T %z"))
   end
 end

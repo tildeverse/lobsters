@@ -77,6 +77,7 @@ class HomeController < ApplicationController
 
     @title = "Newest Stories"
     @above = {partial: "stories/subnav"}
+    @last_read_story = find_last_read_story
 
     @rss_link = {
       title: "RSS 2.0 - Newest Items",
@@ -95,7 +96,7 @@ class HomeController < ApplicationController
       format.json { render json: @stories }
     end
 
-    @user&.touch(:last_read_newest)
+    @user&.touch(:last_read_newest) if @last_read_story || @user&.last_read_newest.nil?
   end
 
   def newest_by_user
@@ -236,7 +237,7 @@ class HomeController < ApplicationController
     @domain = Domain.find_by!(domain: params[:id])
 
     @stories, @show_more = get_from_cache(domain: @domain.domain) do
-      paginate @domain.stories.base(@user).order("id desc")
+      paginate @domain.stories.base(@user).order(id: :desc)
     end
 
     @title = @domain.domain
@@ -244,7 +245,29 @@ class HomeController < ApplicationController
 
     @rss_link = {
       title: "RSS 2.0 - For #{@domain.domain}",
-      href: "/domain/#{@domain.domain}.rss"
+      href: "/domains/#{@domain.domain}.rss"
+    }
+
+    respond_to do |format|
+      format.html { render action: "index" }
+      format.rss { render action: "stories", layout: false }
+      format.json { render json: @stories }
+    end
+  end
+
+  def for_origin
+    @origin = Origin.find_by!(identifier: params[:identifier])
+
+    @stories, @show_more = get_from_cache(identifier: @origin.identifier) do
+      paginate @origin.stories.base(@user).order(id: :desc)
+    end
+
+    @title = @origin.identifier
+    @above = {partial: "for_origin", locals: {origin: @origin, stories: @stories}}
+
+    @rss_link = {
+      title: "RSS 2.0 - For #{@origin.identifier}",
+      href: "/origins/#{@origin.identifier}.rss"
     }
 
     respond_to do |format|
@@ -341,7 +364,7 @@ class HomeController < ApplicationController
       begin
         Rails.cache.fetch("stories #{key}", expires_in: 45, &)
       rescue Errno::ENOENT => e
-        Rails.logger.error "error fetching stories #{key}: #{e}"
+        # Rails.logger.error "error fetching stories #{key}: #{e}"
         yield
       end
     end
@@ -353,5 +376,9 @@ class HomeController < ApplicationController
 
   def tags_with_description_for_rss(tags)
     tags.map { |tag| "#{tag.tag} (#{tag.description})" }.join(" ")
+  end
+
+  def find_last_read_story
+    @stories.find { |story| @user&.last_read_newest&.after?(story.created_at) }
   end
 end

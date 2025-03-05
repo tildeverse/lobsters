@@ -10,12 +10,55 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_09_09_220644) do
+ActiveRecord::Schema[8.0].define(version: 2025_02_10_214901) do
+  create_table "action_mailbox_inbound_emails", charset: "utf8mb4", collation: "utf8mb4_unicode_ci", force: :cascade do |t|
+    t.integer "status", default: 0, null: false
+    t.string "message_id", null: false
+    t.string "message_checksum", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["message_id", "message_checksum"], name: "index_action_mailbox_inbound_emails_uniqueness", unique: true
+  end
+
+  create_table "active_storage_attachments", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "record_type", null: false
+    t.bigint "record_id", null: false
+    t.bigint "blob_id", null: false
+    t.datetime "created_at", null: false
+    t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
+    t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
+  end
+
+  create_table "active_storage_blobs", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
+    t.string "key", null: false
+    t.string "filename", null: false
+    t.string "content_type"
+    t.text "metadata"
+    t.string "service_name", null: false
+    t.bigint "byte_size", null: false
+    t.string "checksum"
+    t.datetime "created_at", null: false
+    t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
+  end
+
+  create_table "active_storage_variant_records", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
+    t.bigint "blob_id", null: false
+    t.string "variation_digest", null: false
+    t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
   create_table "categories", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
-    t.string "category", null: false
+    t.string "category", limit: 25, null: false
     t.datetime "created_at", precision: nil, null: false
     t.datetime "updated_at", precision: nil, null: false
     t.index ["category"], name: "index_categories_on_category", unique: true
+  end
+
+  create_table "comment_stats", charset: "utf8mb4", collation: "utf8mb4_unicode_ci", force: :cascade do |t|
+    t.date "date", null: false
+    t.integer "average", null: false
+    t.index ["date"], name: "index_comment_stats_on_date", unique: true
   end
 
   create_table "comments", id: { type: :bigint, unsigned: true }, charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
@@ -36,6 +79,10 @@ ActiveRecord::Schema[7.1].define(version: 2024_09_09_220644) do
     t.boolean "is_moderated", default: false, null: false
     t.boolean "is_from_email", default: false, null: false
     t.bigint "hat_id", unsigned: true
+    t.integer "depth", default: 0, null: false
+    t.integer "reply_count", default: 0, null: false
+    t.datetime "last_reply_at"
+    t.datetime "last_edited_at", null: false
     t.index ["comment"], name: "index_comments_on_comment", type: :fulltext
     t.index ["confidence"], name: "confidence_idx"
     t.index ["hat_id"], name: "comments_hat_id_fk"
@@ -52,9 +99,13 @@ ActiveRecord::Schema[7.1].define(version: 2024_09_09_220644) do
     t.datetime "created_at", precision: nil, null: false
     t.datetime "updated_at", precision: nil, null: false
     t.datetime "banned_at", precision: nil
-    t.integer "banned_by_user_id"
+    t.bigint "banned_by_user_id", unsigned: true
     t.string "banned_reason", limit: 200
+    t.string "selector"
+    t.string "replacement"
+    t.integer "stories_count", default: 0, null: false
     t.index ["banned_by_user_id"], name: "index_domains_on_banned_by_user_id"
+    t.index ["domain"], name: "index_domains_on_domain", unique: true
   end
 
   create_table "hat_requests", id: { type: :bigint, unsigned: true }, charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
@@ -63,7 +114,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_09_09_220644) do
     t.bigint "user_id", null: false, unsigned: true
     t.string "hat", null: false
     t.string "link", null: false
-    t.text "comment", size: :medium, null: false
+    t.text "comment", null: false
     t.index ["user_id"], name: "hat_requests_user_id_fk"
   end
 
@@ -76,7 +127,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_09_09_220644) do
     t.string "link"
     t.boolean "modlog_use", default: false, null: false
     t.datetime "doffed_at", precision: nil
-    t.string "short_id", null: false
+    t.string "short_id", limit: 10, null: false
     t.index ["granted_by_user_id"], name: "hats_granted_by_user_id_fk"
     t.index ["user_id"], name: "hats_user_id_fk"
   end
@@ -94,7 +145,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_09_09_220644) do
     t.boolean "is_verified", default: false, null: false
     t.string "email", null: false
     t.string "name", null: false
-    t.text "memo"
+    t.text "memo", size: :tiny
     t.string "ip_address"
     t.datetime "created_at", precision: nil, null: false
     t.datetime "updated_at", precision: nil, null: false
@@ -106,7 +157,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_09_09_220644) do
     t.string "code"
     t.datetime "created_at", precision: nil, null: false
     t.datetime "updated_at", precision: nil, null: false
-    t.text "memo", size: :medium
+    t.text "memo"
     t.datetime "used_at", precision: nil
     t.bigint "new_user_id", unsigned: true
     t.index ["new_user_id"], name: "invitations_new_user_id_fk"
@@ -120,13 +171,13 @@ ActiveRecord::Schema[7.1].define(version: 2024_09_09_220644) do
   end
 
   create_table "links", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
-    t.string "url", null: false
+    t.string "url", limit: 250, null: false
     t.string "normalized_url", null: false
     t.string "title"
-    t.bigint "from_story_id"
-    t.bigint "from_comment_id"
-    t.bigint "to_story_id"
-    t.bigint "to_comment_id"
+    t.bigint "from_story_id", unsigned: true
+    t.bigint "from_comment_id", unsigned: true
+    t.bigint "to_story_id", unsigned: true
+    t.bigint "to_comment_id", unsigned: true
     t.index ["from_comment_id"], name: "index_links_on_from_comment_id"
     t.index ["from_story_id"], name: "index_links_on_from_story_id"
     t.index ["normalized_url"], name: "index_links_on_normalized_url"
@@ -182,16 +233,32 @@ ActiveRecord::Schema[7.1].define(version: 2024_09_09_220644) do
     t.text "reason", size: :medium
     t.boolean "is_from_suggestions", default: false, null: false
     t.bigint "tag_id", unsigned: true
-    t.integer "domain_id"
+    t.bigint "domain_id"
     t.bigint "category_id"
+    t.bigint "origin_id"
     t.index ["category_id"], name: "index_moderations_on_category_id"
     t.index ["comment_id"], name: "moderations_comment_id_fk"
     t.index ["created_at"], name: "index_moderations_on_created_at"
     t.index ["domain_id"], name: "index_moderations_on_domain_id"
     t.index ["moderator_user_id"], name: "moderations_moderator_user_id_fk"
+    t.index ["origin_id"], name: "index_moderations_on_origin_id"
     t.index ["story_id"], name: "moderations_story_id_fk"
     t.index ["tag_id"], name: "moderations_tag_id_fk"
     t.index ["user_id"], name: "index_moderations_on_user_id"
+  end
+
+  create_table "origins", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
+    t.bigint "domain_id", null: false
+    t.string "identifier", null: false
+    t.integer "stories_count", default: 0, null: false
+    t.datetime "banned_at"
+    t.bigint "banned_by_user_id", unsigned: true
+    t.string "banned_reason", limit: 200
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["banned_by_user_id"], name: "index_origins_on_banned_by_user_id"
+    t.index ["domain_id"], name: "index_origins_on_domain_id"
+    t.index ["identifier"], name: "index_origins_on_identifier", unique: true
   end
 
   create_table "read_ribbons", id: { type: :bigint, unsigned: true }, charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
@@ -219,7 +286,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_09_09_220644) do
     t.string "url", limit: 250, default: ""
     t.string "normalized_url"
     t.string "title", limit: 150, default: "", null: false
-    t.text "description", size: :medium
+    t.text "description"
     t.string "short_id", limit: 6, default: "", null: false
     t.boolean "is_deleted", default: false, null: false
     t.integer "score", default: 1, null: false
@@ -235,13 +302,20 @@ ActiveRecord::Schema[7.1].define(version: 2024_09_09_220644) do
     t.boolean "user_is_following", default: false, null: false
     t.bigint "domain_id"
     t.string "mastodon_id", limit: 25
+    t.bigint "origin_id"
+    t.datetime "last_comment_at"
+    t.integer "stories_count", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.datetime "last_edited_at", null: false
     t.index ["created_at"], name: "index_stories_on_created_at"
     t.index ["domain_id"], name: "index_stories_on_domain_id"
     t.index ["hotness"], name: "hotness_idx"
     t.index ["id", "is_deleted"], name: "index_stories_on_id_and_is_deleted"
+    t.index ["last_comment_at"], name: "index_stories_on_last_comment_at"
     t.index ["mastodon_id"], name: "index_stories_on_mastodon_id"
     t.index ["merged_story_id"], name: "index_stories_on_merged_story_id"
     t.index ["normalized_url"], name: "index_stories_on_normalized_url"
+    t.index ["origin_id"], name: "index_stories_on_origin_id"
     t.index ["score"], name: "index_stories_on_score"
     t.index ["short_id"], name: "unique_short_id", unique: true
     t.index ["url"], name: "url", length: 191
@@ -354,10 +428,13 @@ ActiveRecord::Schema[7.1].define(version: 2024_09_09_220644) do
     t.index ["user_id", "story_id"], name: "user_id_story_id"
   end
 
+  add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "comments", "comments", column: "parent_comment_id", name: "comments_parent_comment_id_fk"
   add_foreign_key "comments", "hats", name: "comments_hat_id_fk"
   add_foreign_key "comments", "stories", name: "comments_story_id_fk"
   add_foreign_key "comments", "users", name: "comments_user_id_fk"
+  add_foreign_key "domains", "users", column: "banned_by_user_id"
   add_foreign_key "hat_requests", "users", name: "hat_requests_user_id_fk"
   add_foreign_key "hats", "users", column: "granted_by_user_id", name: "hats_granted_by_user_id_fk"
   add_foreign_key "hats", "users", name: "hats_user_id_fk"
@@ -365,19 +442,31 @@ ActiveRecord::Schema[7.1].define(version: 2024_09_09_220644) do
   add_foreign_key "hidden_stories", "users", name: "hidden_stories_user_id_fk"
   add_foreign_key "invitations", "users", column: "new_user_id", name: "invitations_new_user_id_fk"
   add_foreign_key "invitations", "users", name: "invitations_user_id_fk"
+  add_foreign_key "links", "comments", column: "from_comment_id"
+  add_foreign_key "links", "comments", column: "to_comment_id"
+  add_foreign_key "links", "stories", column: "from_story_id"
+  add_foreign_key "links", "stories", column: "to_story_id"
   add_foreign_key "messages", "hats", name: "messages_hat_id_fk"
+  add_foreign_key "messages", "users", column: "author_user_id"
   add_foreign_key "messages", "users", column: "recipient_user_id", name: "messages_recipient_user_id_fk"
   add_foreign_key "mod_notes", "users", column: "moderator_user_id", name: "mod_notes_moderator_user_id_fk"
   add_foreign_key "mod_notes", "users", name: "mod_notes_user_id_fk"
+  add_foreign_key "moderations", "categories"
   add_foreign_key "moderations", "comments", name: "moderations_comment_id_fk"
+  add_foreign_key "moderations", "domains"
+  add_foreign_key "moderations", "origins"
   add_foreign_key "moderations", "stories", name: "moderations_story_id_fk"
   add_foreign_key "moderations", "tags", name: "moderations_tag_id_fk"
+  add_foreign_key "moderations", "users"
   add_foreign_key "moderations", "users", column: "moderator_user_id", name: "moderations_moderator_user_id_fk"
+  add_foreign_key "origins", "domains"
+  add_foreign_key "origins", "users", column: "banned_by_user_id"
   add_foreign_key "read_ribbons", "stories", name: "read_ribbons_story_id_fk"
   add_foreign_key "read_ribbons", "users", name: "read_ribbons_user_id_fk"
   add_foreign_key "saved_stories", "stories", name: "saved_stories_story_id_fk"
   add_foreign_key "saved_stories", "users", name: "saved_stories_user_id_fk"
   add_foreign_key "stories", "domains"
+  add_foreign_key "stories", "origins"
   add_foreign_key "stories", "stories", column: "merged_story_id", name: "stories_merged_story_id_fk"
   add_foreign_key "stories", "users", name: "stories_user_id_fk"
   add_foreign_key "suggested_taggings", "stories", name: "suggested_taggings_story_id_fk"
@@ -389,6 +478,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_09_09_220644) do
   add_foreign_key "tag_filters", "users", name: "tag_filters_user_id_fk"
   add_foreign_key "taggings", "stories", name: "taggings_story_id_fk"
   add_foreign_key "taggings", "tags", name: "taggings_tag_id_fk", on_update: :cascade, on_delete: :cascade
+  add_foreign_key "tags", "categories"
   add_foreign_key "users", "users", column: "banned_by_user_id", name: "users_banned_by_user_id_fk"
   add_foreign_key "users", "users", column: "disabled_invite_by_user_id", name: "users_disabled_invite_by_user_id_fk"
   add_foreign_key "users", "users", column: "invited_by_user_id", name: "users_invited_by_user_id_fk"
